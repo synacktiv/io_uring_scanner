@@ -60,7 +60,7 @@ pub enum ScanOptions {
     SshVersion(SshVersionScanOptions),
 }
 
-const HTTP_VERBS: [&'static str; 8] = [
+const HTTP_VERBS: [&str; 8] = [
     "GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE",
 ];
 
