@@ -14,6 +14,7 @@ use crate::ring::{EntryInfo, RingAllocator};
 
 pub mod http_header_match;
 pub mod ssh_version;
+pub mod tcp_connect;
 
 pub struct Timeouts {
     pub connect: Timespec,

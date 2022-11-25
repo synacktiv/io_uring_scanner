@@ -2,7 +2,8 @@
 
 cd "$(dirname -- "$0")"
 
-readonly PLOT_DATA_FILE="$(basename "$0").csv"
+readonly IP="${1:?}"
+readonly PLOT_DATA_FILE="$(basename "$0")_${IP}.csv"
 
 # auto cleanup
 at_exit() {
@@ -26,8 +27,7 @@ echo 'scanner;ip_count;system time;user time;wall time' > "${PLOT_DATA_FILE}"
 
 for subnet_mask_len in {20..15}
 do
-  ip=142.250.74.227  # a Google IP
-  target="${ip}/${subnet_mask_len}"
+  target="${IP}/${subnet_mask_len}"
   
   for scan in {nmap,ius}
   do
@@ -37,7 +37,8 @@ do
     then
       scan_cmd=(nmap --min-hostgroup 65536 --max-retries 0 --host-timeout 3s --max-scan-delay 0 -n -Pn -sT -p80 ${target})
     else
-      scan_cmd=(./target/release/io_uring_scanner --ring-size 8192 --connect-timeout-sec 3 80 ${target} http-header-match --resp-header-regex 'Server: nginx')
+      # scan_cmd=(./target/release/io_uring_scanner --ring-size 8192 --connect-timeout-sec 3 80 ${target} http-header-match --resp-header-regex 'Server: nginx')
+      scan_cmd=(./target/release/io_uring_scanner --ring-size 8192 --connect-timeout-sec 3 80 ${target} tcp-connect)
     fi
     measure "${scan_cmd[@]}"
   done

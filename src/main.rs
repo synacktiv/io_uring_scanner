@@ -16,6 +16,7 @@ use structopt::StructOpt;
 
 use scan::http_header_match::ScanHttpHeaderMatch;
 use scan::ssh_version::ScanSshVersion;
+use scan::tcp_connect::ScanTcpConnect;
 use scan::{can_push, Scan};
 
 mod config;
@@ -45,6 +46,7 @@ fn main() -> io::Result<()> {
             Box::new(ScanHttpHeaderMatch::new(scan_opts))
         }
         config::ScanOptions::SshVersion(scan_opts) => Box::new(ScanSshVersion::new(scan_opts)),
+        config::ScanOptions::TcpConnect(_) => Box::new(ScanTcpConnect::new()),
     };
 
     // Probe

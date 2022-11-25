@@ -59,13 +59,14 @@ pub struct CommandLineOptions {
 pub enum ScanOptions {
     HttpHeaderMatch(HttpHeaderMatchScanOptions),
     SshVersion(SshVersionScanOptions),
+    TcpConnect(TcpConnectScanOptions),
 }
 
 const HTTP_VERBS: [&str; 8] = [
     "GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE",
 ];
 
-/// HTTP header match scan options
+/// HTTP header match scan
 #[derive(Debug, Clone, structopt::StructOpt)]
 pub struct HttpHeaderMatchScanOptions {
     #[structopt(long = "req-verb", default_value = "GET", possible_values(&HTTP_VERBS))]
@@ -135,9 +136,13 @@ impl FromStr for ResponseHttpHeaderRegex {
     }
 }
 
-/// SSH version scan options
+/// SSH version scan
 #[derive(Debug, Clone, structopt::StructOpt)]
 pub struct SshVersionScanOptions {
     /// Regex to match on version string
     pub regex: Option<regex::bytes::Regex>,
 }
+
+/// TCP connect scan
+#[derive(Debug, Clone, structopt::StructOpt)]
+pub struct TcpConnectScanOptions {}
