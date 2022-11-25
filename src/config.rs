@@ -24,7 +24,8 @@ pub struct CommandLineOptions {
     #[structopt(long = "max-prealloc-sockets", default_value = "16")]
     pub prealloc_socket_count: usize,
 
-    /// io_uring submition/completion ring size, depending on the scan type 5-10 entries may be needed per IP
+    /// io_uring submition/completion ring size, depending on the scan type 5-10 entries may be needed per IP.
+    /// Must be a power of 2. The kernel enforces a maximum for this value.
     #[structopt(long, default_value = "1024")]
     pub ring_size: usize,
 
