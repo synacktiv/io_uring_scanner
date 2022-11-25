@@ -6,7 +6,13 @@ use ipnet::Ipv4Net;
 
 /// Command line options
 #[derive(Debug, structopt::StructOpt)]
-#[structopt(version=env!("CARGO_PKG_VERSION"), about="io_uring based network scanner.")]
+#[structopt(version=env!("CARGO_PKG_VERSION"), about="io_uring based network scanner.", long_about=r#"
+Examples:
+  - Look for Nginx servers on 192.168.0.1/24:
+    io_uring_scanner 80 192.168.0.1/24 http-header-match --resp-header-regex 'Server: ^nginx'
+  - Look for OpenSSH 8.4 servers on 10.0.0.1/16:
+    io_uring_scanner 22 10.0.0.1/16 ssh-version '^SSH-2\.0-OpenSSH_8\.4'
+"#)]
 pub struct CommandLineOptions {
     /// TCP port to scan
     pub port: u16,
