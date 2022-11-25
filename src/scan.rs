@@ -1,11 +1,11 @@
 //! Scan type specific logic
 
-use io_uring::Probe;
 use std::os::unix::io::RawFd;
 
 use io_uring::{
     cqueue,
     squeue::{PushError, SubmissionQueue},
+    Probe,
 };
 use nix::sys::socket::SockaddrIn;
 

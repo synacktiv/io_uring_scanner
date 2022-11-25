@@ -96,10 +96,9 @@ fn main() -> io::Result<()> {
             ),
     );
 
-    loop {
-        let mut wait = false;
-        //iorings.submission().sync();
-        if can_push(&iorings.submission(), &*scan, &ring_allocator) {
+    let mut done = false;
+    while !done {
+        while can_push(&iorings.submission(), &*scan, &ring_allocator) {
             if let Some(ip_addr) = ip_iter.next() {
                 let addr = SockaddrIn::from(SocketAddrV4::new(ip_addr, cl_opts.port));
                 let sckt = scan.socket();
@@ -113,25 +112,21 @@ fn main() -> io::Result<()> {
                     &cl_opts,
                 )
                 .expect("Failed to push ring ops");
-                iorings.submission().sync();
             } else if ring_allocator.allocated_entry_count() == 0 {
+                done = true;
                 break;
             } else {
-                wait = true;
-            };
-        } else {
-            wait = true;
+                break;
+            }
         }
-        if wait {
-            iorings.submit_and_wait(min(
-                cl_opts.ring_batch_size,
-                total_ip_count - progress.length().unwrap() as usize,
-            ))?;
-        } else {
-            iorings.submit()?;
-        }
-        //assert!(!iorings.submission().cq_overflow());
-        //assert_eq!(!iorings.submission().dropped(), 0);
+
+        let completed_count = iorings.completion().len();
+        log::trace!("Completed count before wait: {completed_count}");
+        iorings.submit_and_wait(min(
+            cl_opts.ring_batch_size,
+            ring_allocator.allocated_entry_count() - completed_count,
+        ))?;
+        log::trace!("Completed count after wait: {}", iorings.completion().len());
 
         for ce in iorings.completion() {
             let entry = ring_allocator.get_entry(ce.user_data());
@@ -140,7 +135,6 @@ fn main() -> io::Result<()> {
             }
             ring_allocator.free_entry(ce.user_data());
         }
-        //iorings.completion().sync();
     }
     progress.finish();
 

@@ -316,6 +316,7 @@ impl Scan for ScanHttpHeaderMatch {
             op_recv_timeout,
             op_close,
         ];
+        log::trace!("Pushing: {ops:#?}");
         unsafe {
             squeue.push_multiple(&ops).expect("Failed to push ops");
         }
