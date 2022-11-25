@@ -18,8 +18,8 @@ pub struct CommandLineOptions {
     #[structopt(long = "max-prealloc-sockets", default_value = "16")]
     pub prealloc_socket_count: usize,
 
-    #[structopt(long, default_value = "1024")]
     /// io_uring submition/completion ring size, depending on the scan type 5-10 entries may be needed per IP
+    #[structopt(long, default_value = "1024")]
     pub ring_size: usize,
 
     /// Number of ring entries to process at once
@@ -54,9 +54,21 @@ pub enum ScanOptions {
     SshVersion(SshVersionScanOptions),
 }
 
+const HTTP_VERBS: [&'static str; 8] = [
+    "GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE",
+];
+
 /// HTTP header match scan options
 #[derive(Debug, Clone, structopt::StructOpt)]
 pub struct HttpHeaderMatchScanOptions {
+    #[structopt(long = "req-verb", default_value = "GET", possible_values(&HTTP_VERBS))]
+    pub request_verb: String,
+
+    #[structopt(long = "req-uri", default_value = "/")]
+    pub request_uri: String,
+
+    // #[structopt(long = "req-data")]
+    // pub request_data: Option<bstr::BString>,
     #[structopt(
         long = "req-header",
         help = "HTTP header to set in request, in 'key: value' form"
@@ -68,9 +80,6 @@ pub struct HttpHeaderMatchScanOptions {
         help = "Regex to match for in response header in 'key: regex' form. Multiple rules will match response if all rules do match."
     )]
     pub response_header_regexs: Vec<ResponseHttpHeaderRegex>,
-
-    #[structopt(long = "relative-url", default_value = "/")]
-    pub relative_url: String,
 }
 
 #[derive(Debug, Clone)]

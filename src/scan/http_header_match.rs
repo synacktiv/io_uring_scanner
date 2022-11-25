@@ -104,8 +104,8 @@ impl ScanHttpHeaderMatch {
         };
         write!(
             &mut s,
-            "GET {} HTTP/1.1\r\nHost: {}\r\n",
-            self.opts.relative_url, addr,
+            "{} {} HTTP/1.1\r\nHost: {}\r\n",
+            self.opts.request_verb, self.opts.request_uri, addr,
         )
         .unwrap();
         for hdr in &self.opts.request_headers {
