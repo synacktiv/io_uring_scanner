@@ -1,13 +1,13 @@
 #![feature(byte_slice_trim_ascii)]
 
-// TODO clippy pedantic + deny unwrap
-
 use std::cmp::min;
+use std::fmt::Write;
 use std::io;
 use std::net::SocketAddrV4;
 use std::os::fd::AsRawFd;
+use std::time::Duration;
 
-use indicatif::{ProgressBar, ProgressStyle};
+use indicatif::{HumanDuration, ProgressBar, ProgressState, ProgressStyle};
 use io_uring::{IoUring, Probe};
 use iprange::IpRange;
 use nix::sys::{resource, socket::SockaddrIn};
@@ -66,12 +66,39 @@ fn main() -> io::Result<()> {
     let progress = ProgressBar::new(total_ip_count as u64);
     progress.set_style(
         ProgressStyle::default_bar()
-            .template("Scanning IPs {msg} {wide_bar} {pos}/{len} ({per_sec}) ETA {eta}")
-            .unwrap(),
+            .template(
+                "Scanning IPs {msg} {wide_bar} {pos}/{len} ({smoothed_per_sec}) ETA {smoothed_eta}",
+            )
+            .unwrap()
+            .with_key(
+                "smoothed_eta",
+                |s: &ProgressState, w: &mut dyn Write| match (s.pos(), s.len()) {
+                    (pos, Some(len)) => write!(
+                        w,
+                        "{:#}",
+                        HumanDuration(Duration::from_millis(
+                            (s.elapsed().as_millis() * (len as u128 - pos as u128) / (pos as u128))
+                                as u64
+                        ))
+                    )
+                    .unwrap(),
+                    _ => write!(w, "-").unwrap(),
+                },
+            )
+            .with_key(
+                "smoothed_per_sec",
+                |s: &ProgressState, w: &mut dyn Write| match (s.pos(), s.elapsed().as_millis()) {
+                    (pos, elapsed_ms) if elapsed_ms > 0 => {
+                        write!(w, "{:.2}/s", pos as f64 * 1000_f64 / elapsed_ms as f64).unwrap()
+                    }
+                    _ => write!(w, "-").unwrap(),
+                },
+            ),
     );
 
     loop {
         let mut wait = false;
+        //iorings.submission().sync();
         if can_push(&iorings.submission(), &*scan, &ring_allocator) {
             if let Some(ip_addr) = ip_iter.next() {
                 let addr = SockaddrIn::from(SocketAddrV4::new(ip_addr, cl_opts.port));
@@ -103,6 +130,9 @@ fn main() -> io::Result<()> {
         } else {
             iorings.submit()?;
         }
+        //assert!(!iorings.submission().cq_overflow());
+        //assert_eq!(!iorings.submission().dropped(), 0);
+
         for ce in iorings.completion() {
             let entry = ring_allocator.get_entry(ce.user_data());
             if scan.process_completed_entry(&ce, entry, &ring_allocator) {
@@ -110,7 +140,7 @@ fn main() -> io::Result<()> {
             }
             ring_allocator.free_entry(ce.user_data());
         }
-        iorings.completion().sync();
+        //iorings.completion().sync();
     }
     progress.finish();
 
