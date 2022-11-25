@@ -337,28 +337,30 @@ impl Scan for ScanHttpHeaderMatch {
 mod tests {
     use super::*;
 
+    use bstr::B;
+
     #[test]
     fn test_parse_header_line() {
-        assert_eq!(ScanHttpHeaderMatch::parse_header_line("200 OK"), None);
+        assert_eq!(ScanHttpHeaderMatch::parse_header_line(B("200 OK")), None);
         assert_eq!(
-            ScanHttpHeaderMatch::parse_header_line("Server: srv 1.2.3"),
-            Some(("Server", "srv 1.2.3"))
+            ScanHttpHeaderMatch::parse_header_line(B("Server: srv 1.2.3")),
+            Some((B("Server"), B("srv 1.2.3")))
         );
         assert_eq!(
-            ScanHttpHeaderMatch::parse_header_line(" Server: srv 1.2.3"),
-            Some((" Server", "srv 1.2.3"))
+            ScanHttpHeaderMatch::parse_header_line(B(" Server: srv 1.2.3")),
+            Some((B(" Server"), B("srv 1.2.3")))
         );
         assert_eq!(
-            ScanHttpHeaderMatch::parse_header_line("Server:   srv 1.2.3"),
-            Some(("Server", "srv 1.2.3"))
+            ScanHttpHeaderMatch::parse_header_line(B("Server:   srv 1.2.3")),
+            Some((B("Server"), B("srv 1.2.3")))
         );
         assert_eq!(
-            ScanHttpHeaderMatch::parse_header_line("Server: srv 1.2.3  "),
-            Some(("Server", "srv 1.2.3  "))
+            ScanHttpHeaderMatch::parse_header_line(B("Server: srv 1.2.3  ")),
+            Some((B("Server"), B("srv 1.2.3  ")))
         );
         assert_eq!(
-            ScanHttpHeaderMatch::parse_header_line("Server:: srv 1.2.3"),
-            Some(("Server", ": srv 1.2.3"))
+            ScanHttpHeaderMatch::parse_header_line(B("Server:: srv 1.2.3")),
+            Some((B("Server"), B(": srv 1.2.3")))
         );
     }
 }
