@@ -170,7 +170,6 @@ impl Scan for ScanHttpHeaderMatch {
                 false
             }
             EntryStep::Close => {
-                // TODO push to a channel to do this in another thread instead
                 if cq_entry.result() == -libc::ECANCELED {
                     // if a previous entry errored and the socket close was canceled, do it now to avoid fd leak
                     unistd::close(entry_info.fd).unwrap();

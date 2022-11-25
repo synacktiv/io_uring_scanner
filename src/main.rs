@@ -38,7 +38,6 @@ fn main() -> io::Result<()> {
     resource::setrlimit(resource::Resource::RLIMIT_NOFILE, hard_limit, hard_limit).unwrap();
     log::info!("Bumped RLIMIT_NOFILE from {soft_limit} to {hard_limit}");
 
-    // TODO tweak via builder
     let mut iorings = IoUring::new(cl_opts.ring_size as u32)?;
 
     let mut scan: Box<dyn Scan> = match &cl_opts.scan_opts {
