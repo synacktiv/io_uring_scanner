@@ -4,11 +4,7 @@ use std::net::Ipv4Addr;
 use std::rc::Rc;
 
 use bstr::ByteSlice;
-use io_uring::{
-    cqueue, opcode, squeue,
-    types::{Fd, Timespec},
-    Probe,
-};
+use io_uring::{cqueue, opcode, squeue, types::Fd, Probe};
 use nix::{
     errno::Errno,
     libc,
@@ -16,9 +12,9 @@ use nix::{
     unistd,
 };
 
-use crate::config::{CommandLineOptions, SshVersionScanOptions};
+use crate::config::SshVersionScanOptions;
 use crate::ring::{BufferDirection, BufferInfo, EntryInfo, RingAllocator};
-use crate::scan::{check_op_supported, PushError, RawFd, Scan, SockaddrIn};
+use crate::scan::{check_op_supported, PushError, RawFd, Scan, SockaddrIn, Timeouts};
 
 pub struct ScanSshVersion {
     opts: SshVersionScanOptions,
@@ -127,7 +123,7 @@ impl Scan for ScanSshVersion {
         addr: &SockaddrIn,
         squeue: &mut io_uring::squeue::SubmissionQueue,
         allocator: &mut RingAllocator,
-        cl_opts: &CommandLineOptions,
+        timeouts: &Timeouts,
     ) -> Result<usize, PushError> {
         let addr = Rc::new(addr.to_owned());
 
@@ -152,11 +148,10 @@ impl Scan for ScanSshVersion {
                 fd: sckt,
             })
             .unwrap();
-        let op_connect_timeout =
-            opcode::LinkTimeout::new(&Timespec::new().sec(cl_opts.timeout_connect_secs))
-                .build()
-                .flags(squeue::Flags::IO_LINK)
-                .user_data(entry_connect_timeout_idx);
+        let op_connect_timeout = opcode::LinkTimeout::new(&timeouts.connect)
+            .build()
+            .flags(squeue::Flags::IO_LINK)
+            .user_data(entry_connect_timeout_idx);
 
         let rx_buffer = allocator.alloc_buf(BufferDirection::RX, None);
         let op_recv_idx = allocator
@@ -188,11 +183,10 @@ impl Scan for ScanSshVersion {
                 fd: sckt,
             })
             .unwrap();
-        let op_recv_timeout =
-            opcode::LinkTimeout::new(&Timespec::new().sec(cl_opts.timeout_read_secs))
-                .build()
-                .flags(squeue::Flags::IO_LINK)
-                .user_data(entry_recv_timeout_idx);
+        let op_recv_timeout = opcode::LinkTimeout::new(&timeouts.read)
+            .build()
+            .flags(squeue::Flags::IO_LINK)
+            .user_data(entry_recv_timeout_idx);
 
         let entry_close_idx = allocator
             .alloc_entry(EntryInfo {

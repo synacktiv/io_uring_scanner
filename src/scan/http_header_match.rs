@@ -5,11 +5,7 @@ use std::net::Ipv4Addr;
 use std::rc::Rc;
 
 use bstr::ByteSlice;
-use io_uring::{
-    cqueue, opcode, squeue,
-    types::{Fd, Timespec},
-    Probe,
-};
+use io_uring::{cqueue, opcode, squeue, types::Fd, Probe};
 use nix::{
     errno::Errno,
     libc,
@@ -17,9 +13,9 @@ use nix::{
     unistd,
 };
 
-use crate::config::{CommandLineOptions, HttpHeaderMatchScanOptions};
+use crate::config::HttpHeaderMatchScanOptions;
 use crate::ring::{BufferDirection, BufferInfo, EntryInfo, RingAllocator};
-use crate::scan::{check_op_supported, PushError, RawFd, Scan, SockaddrIn};
+use crate::scan::{check_op_supported, PushError, RawFd, Scan, SockaddrIn, Timeouts};
 
 pub struct ScanHttpHeaderMatch {
     opts: HttpHeaderMatchScanOptions,
@@ -191,7 +187,7 @@ impl Scan for ScanHttpHeaderMatch {
         addr: &SockaddrIn,
         squeue: &mut io_uring::squeue::SubmissionQueue,
         allocator: &mut RingAllocator,
-        cl_opts: &CommandLineOptions,
+        timeouts: &Timeouts,
     ) -> Result<usize, PushError> {
         let addr = Rc::new(addr.to_owned());
 
@@ -205,7 +201,7 @@ impl Scan for ScanHttpHeaderMatch {
             .unwrap();
         let op_connect = opcode::Connect::new(Fd(sckt), addr.as_ptr(), addr.len())
             .build()
-            .flags(squeue::Flags::IO_LINK)
+            .flags(squeue::Flags::IO_LINK | squeue::Flags::ASYNC)
             .user_data(entry_connect_idx);
 
         let entry_connect_timeout_idx = allocator
@@ -216,11 +212,10 @@ impl Scan for ScanHttpHeaderMatch {
                 fd: sckt,
             })
             .unwrap();
-        let op_connect_timeout =
-            opcode::LinkTimeout::new(&Timespec::new().sec(cl_opts.timeout_connect_secs))
-                .build()
-                .flags(squeue::Flags::IO_LINK)
-                .user_data(entry_connect_timeout_idx);
+        let op_connect_timeout = opcode::LinkTimeout::new(&timeouts.connect)
+            .build()
+            .flags(squeue::Flags::IO_LINK)
+            .user_data(entry_connect_timeout_idx);
 
         let req = self.format_request(&addr);
         let tx_buffer = allocator.alloc_buf(BufferDirection::TX, Some(req.as_bytes()));
@@ -253,11 +248,10 @@ impl Scan for ScanHttpHeaderMatch {
                 fd: sckt,
             })
             .unwrap();
-        let op_send_timeout =
-            opcode::LinkTimeout::new(&Timespec::new().sec(cl_opts.timeout_write_secs))
-                .build()
-                .flags(squeue::Flags::IO_LINK)
-                .user_data(entry_send_timeout_idx);
+        let op_send_timeout = opcode::LinkTimeout::new(&timeouts.write)
+            .build()
+            .flags(squeue::Flags::IO_LINK)
+            .user_data(entry_send_timeout_idx);
 
         let rx_buffer = allocator.alloc_buf(BufferDirection::RX, None);
         let op_recv_idx = allocator
@@ -289,11 +283,10 @@ impl Scan for ScanHttpHeaderMatch {
                 fd: sckt,
             })
             .unwrap();
-        let op_recv_timeout =
-            opcode::LinkTimeout::new(&Timespec::new().sec(cl_opts.timeout_read_secs))
-                .build()
-                .flags(squeue::Flags::IO_LINK)
-                .user_data(entry_recv_timeout_idx);
+        let op_recv_timeout = opcode::LinkTimeout::new(&timeouts.read)
+            .build()
+            .flags(squeue::Flags::IO_LINK)
+            .user_data(entry_recv_timeout_idx);
 
         let entry_close_idx = allocator
             .alloc_entry(EntryInfo {

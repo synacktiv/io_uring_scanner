@@ -5,15 +5,21 @@ use std::os::unix::io::RawFd;
 use io_uring::{
     cqueue,
     squeue::{PushError, SubmissionQueue},
+    types::Timespec,
     Probe,
 };
 use nix::sys::socket::SockaddrIn;
 
-use crate::config::CommandLineOptions;
 use crate::ring::{EntryInfo, RingAllocator};
 
 pub mod http_header_match;
 pub mod ssh_version;
+
+pub struct Timeouts {
+    pub connect: Timespec,
+    pub read: Timespec,
+    pub write: Timespec,
+}
 
 /// Network scan
 pub trait Scan {
@@ -41,7 +47,7 @@ pub trait Scan {
         ip: &SockaddrIn,
         squeue: &mut SubmissionQueue,
         allocator: &mut RingAllocator,
-        cl_opts: &CommandLineOptions,
+        timeouts: &Timeouts,
     ) -> Result<usize, PushError>;
 
     /// Create a socket for this scan

@@ -8,6 +8,7 @@ use std::os::fd::AsRawFd;
 use std::time::Duration;
 
 use indicatif::{HumanDuration, ProgressBar, ProgressState, ProgressStyle};
+use io_uring::types::Timespec;
 use io_uring::{IoUring, Probe};
 use iprange::IpRange;
 use nix::sys::{resource, socket::SockaddrIn};
@@ -96,6 +97,13 @@ fn main() -> io::Result<()> {
             ),
     );
 
+    // Build timeouts for direct use by io_uring
+    let timeouts = scan::Timeouts {
+        connect: Timespec::new().sec(cl_opts.timeout_connect_secs),
+        read: Timespec::new().sec(cl_opts.timeout_read_secs),
+        write: Timespec::new().sec(cl_opts.timeout_write_secs),
+    };
+
     let mut done = false;
     while !done {
         while can_push(&iorings.submission(), &*scan, &ring_allocator) {
@@ -109,7 +117,7 @@ fn main() -> io::Result<()> {
                     &addr,
                     &mut iorings.submission(),
                     &mut ring_allocator,
-                    &cl_opts,
+                    &timeouts,
                 )
                 .expect("Failed to push ring ops");
             } else if ring_allocator.allocated_entry_count() == 0 {
