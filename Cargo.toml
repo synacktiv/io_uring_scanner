@@ -1,0 +1,16 @@
+[package]
+name = "io_uring_scanner"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bstr = { version = "1.0.1", default-features = false, features = ["std"] }
+indicatif = { version = "0.17.1", default-features = false, features = ["improved_unicode"] }
+io-uring = { version = "0.5.7", default-features = false, features = ["unstable"] }
+ipnet = { version = "2.5.0", default-features = false }
+iprange = { version = "0.6.7", default-features = false, features = ["serde"] }
+log = { version = "0.4.17", default-features = false, features = ["max_level_trace", "release_max_level_info", "std"] }
+nix = { version = "0.25.0", default-features = false, features = ["net", "resource", "socket"] }
+regex = { version = "1.7.0", default-features = false, features = ["perf", "std"] }
+simple_logger = { version = "2.3.0", default-features = false, features = ["colors", "stderr"] }
+structopt = { version = "0.3.26", default-features = false, features = ["default", "color"] }
