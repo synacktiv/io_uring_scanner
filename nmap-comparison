@@ -1,0 +1,79 @@
+#!/bin/bash -eux
+
+cd "$(dirname -- "$0")"
+
+readonly PLOT_DATA_FILE="$(basename "$0").csv"
+
+# auto cleanup
+at_exit() {
+  set +u
+  rm -rf "${TMP_DIR}"
+  set -u
+}
+trap at_exit EXIT
+
+readonly TMP_DIR=$(mktemp -d /tmp/"$(basename -- "$0")".XXXXXXXXXX)
+readonly TMP_PLOT_FILE="${TMP_DIR}/plot"
+
+measure() {
+  # use /usr/bin/time instead of default shell builtin
+  command time -f '%S;%U;%e' -a -o "${PLOT_DATA_FILE}" "$@" &> /dev/null
+}
+
+cargo build --release
+
+echo 'scanner;ip_count;system time;user time;wall time' > "${PLOT_DATA_FILE}"
+
+for subnet_mask_len in {20..15}
+do
+  ip=142.250.74.227  # a Google IP
+  target="${ip}/${subnet_mask_len}"
+  
+  for scan in {nmap,ius}
+  do
+    ip_count=$(python3 -c 'import ipaddress, sys; print(ipaddress.ip_network(sys.argv[1], strict=False).num_addresses)' "${target}")
+    echo -n "${scan};${ip_count};" >> "${PLOT_DATA_FILE}"
+    if [ ${scan} = "nmap" ]
+    then
+      scan_cmd=(nmap --min-hostgroup 65536 --max-retries 0 --host-timeout 3s --max-scan-delay 0 -n -Pn -sT -p80 ${target})
+    else
+      scan_cmd=(./target/release/io_uring_scanner --ring-size 8192 --connect-timeout-sec 3 80 ${target} http-header-match --resp-header-regex 'Server: nginx')
+    fi
+    measure "${scan_cmd[@]}"
+  done
+done
+
+cat <<EOF > "${TMP_PLOT_FILE}"
+set datafile separator ';';
+
+set title 'Nmap comparison';
+set terminal pngcairo dashed size 1024,800 font 'Liberation,9';
+set output '${PLOT_DATA_FILE%.*}.png';
+
+set xlabel 'IP count';
+
+set ylabel 'Time (seconds)';
+EOF
+
+echo -n 'plot ' >> "${TMP_PLOT_FILE}"
+lc=1
+for scan in {nmap,ius}
+do
+  grep "^${scan};" "${PLOT_DATA_FILE}" > "${TMP_DIR}/${scan}"
+  echo -n "\"${TMP_DIR}/${scan}\" using (\$2):(\$3+\$4) with line title \"CPU time ${scan}\" linetype 0 linecolor ${lc} linewidth 3, " >> "${TMP_PLOT_FILE}"
+  echo -n "\"${TMP_DIR}/${scan}\" using (\$2):(\$5) with line title \"Wall time ${scan}\" linecolor ${lc} linewidth 3" >> "${TMP_PLOT_FILE}"
+  lc=$((lc+1))
+  if [ ${scan} = "nmap" ]
+  then 
+    echo -n ', ' >> "${TMP_PLOT_FILE}"
+  else
+    echo ';' >> "${TMP_PLOT_FILE}"
+  fi
+done
+
+cat "${TMP_PLOT_FILE}"
+gnuplot "${TMP_PLOT_FILE}"
+
+now="$(date +%Y-%m-%d_%H:%M:%S)"
+mv "${PLOT_DATA_FILE}" "${PLOT_DATA_FILE%.*}_${now}.csv"
+mv "${PLOT_DATA_FILE%.*}.png" "${PLOT_DATA_FILE%.*}_${now}.png"
