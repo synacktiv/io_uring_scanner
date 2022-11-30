@@ -47,13 +47,14 @@ done
 cat <<EOF > "${TMP_PLOT_FILE}"
 set datafile separator ';';
 
-set title 'Nmap comparison';
-set terminal pngcairo dashed size 1024,800 font 'Liberation,9';
+set title 'io_uring scanner vs Nmap comparison' noenhanced;
+set terminal pngcairo dashed size 1024,800 font 'Liberation-Medium,13';
 set output '${PLOT_DATA_FILE%.*}.png';
 
 set xlabel 'IP count';
+set rmargin 4;
 
-set ylabel 'Time (seconds)';
+set ylabel 'Time (seconds), less is better';
 EOF
 
 echo -n 'plot ' >> "${TMP_PLOT_FILE}"
