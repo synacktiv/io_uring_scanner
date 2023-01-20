@@ -10,7 +10,7 @@ Supports 3 scan modes:
 
 ## Build from source
 
-You need a Rust build environment for example from [rustup](https://rustup.rs/).
+You need a Rust build environment with a nightly toolchain, from [rustup](https://rustup.rs/).
 
 ```
 cargo build --release
